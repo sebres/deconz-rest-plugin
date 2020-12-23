@@ -413,7 +413,7 @@ void DeRestPluginPrivate::handleTuyaClusterIndication(const deCONZ::ApsDataIndic
                     quint8 temperature = (quint8) ((dp >> 8) & 0xFF);
                     quint8 minute = (quint8) ((dp >> 16) & 0xFF);
 
-                    DBG_Printf(DBG_INFO, "Tuya debug 9 : windows open info: %d %d %d" ,valve , temperature, minute );
+                    //DBG_Printf(DBG_INFO, "Tuya debug 9 : windows open info: %d %d %d\n" ,valve , temperature, minute );
 
                 }
                 break;
@@ -831,7 +831,7 @@ void DeRestPluginPrivate::handleTuyaClusterIndication(const deCONZ::ApsDataIndic
     //https://developer.tuya.com/en/docs/iot/device-development/embedded-software-development/mcu-development-access/zigbee-general-solution/tuya-zigbee-module-uart-communication-protocol
     else if (zclFrame.commandId() == 0x24)
     {
-        DBG_Printf(DBG_INFO, "Tuya debug 1 : Time sync Request" );
+        DBG_Printf(DBG_INFO, "Tuya debug 1 : Time sync Request\n" );
         
         QDataStream stream(zclFrame.payload());
         stream.setByteOrder(QDataStream::LittleEndian);
