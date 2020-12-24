@@ -164,9 +164,6 @@ void DeRestPluginPrivate::sendTimeClusterResponse(const deCONZ::ApsDataIndicatio
         		break;
 
         	case 0x0007:
-            
-                DBG_Printf(DBG_INFO, "Time debug : %ld\n" , time_local_time );
-            
         		stream << code;
         		stream << (quint8) deCONZ::Zcl32BitUint;
         		stream << time_local_time;
