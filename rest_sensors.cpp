@@ -1109,7 +1109,7 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
                             return REQ_READY_SEND;
                         }
                     }
-                    else if (sensor->modelId().startsWith(QLatin1String("TRV001")))
+                    else if (sensor->modelId() == QLatin1String("eTRV0100") || sensor->modelId() == QLatin1String("TRV001"))
                     {
                         if (addTaskThermostatCmd(task, VENDOR_DANFOSS, 0x40, heatsetpoint, 0))
                         {
@@ -1171,12 +1171,8 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
                 }
                 else if (rid.suffix == RConfigCoolSetpoint)
                 {
-                    
-                    // Further Clarification on the type check required. Value should come in as integer by the client and expected as such by the API
-                    // Suspended for now in favor of functionality
-                    
-                    //if (map[pi.key()].type() == QVariant::Double)
-                    //{
+                    if (map[pi.key()].type() == QVariant::Double)
+                    {
                         qint16 coolsetpoint = map[pi.key()].toInt(&ok);
 
                         if (addTaskThermostatReadWriteAttribute(task, deCONZ::ZclWriteAttributesId, 0x0000, 0x0011, deCONZ::Zcl16BitInt, coolsetpoint))
@@ -1190,14 +1186,14 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
                             rsp.httpStatus = HttpStatusBadRequest;
                             return REQ_READY_SEND;
                         }
-                    /*}
+                    }
                     else
                     {
                         rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/%1/config/%2").arg(id).arg(pi.key()).toHtmlEscaped(),
                                                    QString("invalid value, %1, for parameter %2").arg(map[pi.key()].toString()).arg(pi.key()).toHtmlEscaped()));
                         rsp.httpStatus = HttpStatusBadRequest;
                         return REQ_READY_SEND;
-                    }*/
+                    }
                 }
                 else if ((rid.suffix == RConfigMode) && !sensor->modelId().startsWith(QLatin1String("SPZB")))
                 {
@@ -1290,15 +1286,16 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
                             updated = true;
                         }
                     }
-                    else if (sensor->modelId().startsWith(QLatin1String("SLR2")) ||   // Hive
-                             sensor->modelId() == QLatin1String("SLR1b") ||           // Hive
-                             sensor->modelId().startsWith(QLatin1String("TH112")) ||  // Sinope
-                             sensor->modelId().startsWith(QLatin1String("902010/32")) ||  // Bitron
-                             sensor->modelId().startsWith(QLatin1String("Zen-01")) || // Zen
-                             sensor->modelId().startsWith(QLatin1String("3157100")) ||// Centralite Pearl
-                             sensor->modelId().startsWith(QLatin1String("SORB")) ||   // Stelpro Orleans Fan
-                             sensor->modelId().startsWith(QLatin1String("AC201")) ||  // OWON
-                             sensor->modelId().startsWith(QLatin1String("Super TR"))) // ELKO
+                    else if (sensor->modelId().startsWith(QLatin1String("SLR2")) ||         // Hive
+                             sensor->modelId() == QLatin1String("SLR1b") ||                 // Hive
+                             sensor->modelId() == QLatin1String("TH1300ZB") ||              // Sinope
+                             sensor->modelId().startsWith(QLatin1String("TH112")) ||        // Sinope
+                             sensor->modelId().startsWith(QLatin1String("902010/32")) ||    // Bitron
+                             sensor->modelId().startsWith(QLatin1String("Zen-01")) ||       // Zen
+                             sensor->modelId().startsWith(QLatin1String("3157100")) ||      // Centralite Pearl
+                             sensor->modelId().startsWith(QLatin1String("SORB")) ||         // Stelpro Orleans Fan
+                             sensor->modelId().startsWith(QLatin1String("AC201")) ||        // OWON
+                             sensor->modelId().startsWith(QLatin1String("Super TR")))       // ELKO
                     {
 
                         QString modeSet = map[pi.key()].toString();
@@ -1504,7 +1501,8 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
                             }
                         }
                         else if (sensor->modelId() == QLatin1String("eTRV0100") || sensor->modelId() == QLatin1String("TRV001") ||
-                                 sensor->modelId() == QLatin1String("SORB") || sensor->modelId() == QLatin1String("3157100"))
+                                 sensor->modelId() == QLatin1String("SORB") || sensor->modelId() == QLatin1String("3157100") ||
+                                 sensor->modelId() == QLatin1String("TH1300ZB"))
                         {
                             quint32 data = map[pi.key()].toUInt(&ok);
 
@@ -2725,7 +2723,7 @@ void DeRestPluginPrivate::handleSensorEvent(const Event &e)
     if (strncmp(e.what(), "state/", 6) == 0)
     {
         ResourceItem *item = sensor->item(e.what());
-        if (item)
+        if (item && item->isPublic())
         {
             if (item->descriptor().suffix == RStatePresence && item->toBool())
             {
@@ -2783,7 +2781,7 @@ void DeRestPluginPrivate::handleSensorEvent(const Event &e)
                     {
                         iy = item;
                     }
-                    else if (item->lastSet().isValid() && (gwWebSocketNotifyAll || rid.suffix == RStateButtonEvent || (item->lastChanged().isValid() && item->lastChanged() >= sensor->lastStatePush)))
+                    else if (item->isPublic() && item->lastSet().isValid() && (gwWebSocketNotifyAll || rid.suffix == RStateButtonEvent || (item->lastChanged().isValid() && item->lastChanged() >= sensor->lastStatePush)))
                     {
                         state[key] = item->toVariant();
                     }
@@ -2827,7 +2825,7 @@ void DeRestPluginPrivate::handleSensorEvent(const Event &e)
     else if (strncmp(e.what(), "config/", 7) == 0)
     {
         ResourceItem *item = sensor->item(e.what());
-        if (item)
+        if (item && item->isPublic())
         {
             if (sensor->lastConfigPush.isValid() &&
             item->lastSet() < sensor->lastConfigPush)
@@ -2873,7 +2871,7 @@ void DeRestPluginPrivate::handleSensorEvent(const Event &e)
                     {
                         ilct = item;
                     }
-                    else if (item->lastSet().isValid() && (gwWebSocketNotifyAll || (item->lastChanged().isValid() && item->lastChanged() >= sensor->lastConfigPush)))
+                    else if (item->isPublic() && item->lastSet().isValid() && (gwWebSocketNotifyAll || (item->lastChanged().isValid() && item->lastChanged() >= sensor->lastConfigPush)))
                     {
                         if (rid.suffix == RConfigSchedule)
                         {
@@ -2913,7 +2911,7 @@ void DeRestPluginPrivate::handleSensorEvent(const Event &e)
     else if (strncmp(e.what(), "attr/", 5) == 0)
     {
         ResourceItem *item = sensor->item(e.what());
-        if (item)
+        if (item && item->isPublic())
         {
             QVariantMap map;
             map["t"] = QLatin1String("event");
@@ -3055,6 +3053,7 @@ void DeRestPluginPrivate::startSearchSensors()
         searchSensorsResult.clear();
         lastSensorsScan = QDateTime::currentDateTimeUtc().toString(QLatin1String("yyyy-MM-ddTHH:mm:ss"));
         QTimer::singleShot(1000, this, SLOT(searchSensorsTimerFired()));
+        searchSensorGppPairCounter = 0;
         searchSensorsState = SearchSensorsActive;
     }
     else
@@ -3129,6 +3128,12 @@ void DeRestPluginPrivate::checkSensorStateTimerFired()
         if (sensor->durationDue.isValid())
         {
             QDateTime now = QDateTime::currentDateTime();
+
+            if (sensor->modelId() == QLatin1String("TY0202")) // Lidl/SILVERCREST motion sensor
+            {
+                continue; // will be only reset via IAS Zone status
+            }
+
             if (sensor->durationDue <= now)
             {
                 // automatically set presence to false, if not triggered in config.duration

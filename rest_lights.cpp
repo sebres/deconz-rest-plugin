@@ -531,7 +531,7 @@ int DeRestPluginPrivate::setLightState(const ApiRequest &req, ApiResponse &rsp)
     if (!taskRef.lightNode->isAvailable())
     {
         rsp.httpStatus = HttpStatusOk;
-        rsp.list.append(errorToMap(ERR_RESOURCE_NOT_AVAILABLE, QString("/lights/%1").arg(id), QString("resource, /lights/%1, not available").arg(id)));
+        rsp.list.append(errorToMap(ERR_DEVICE_NOT_REACHABLE, QString("/lights/%1/state").arg(id), QString("resource, /lights/%1/state, is not modifiable. Device is not reachable.").arg(id)));
         return REQ_READY_SEND;
     }
 
@@ -1729,8 +1729,9 @@ int DeRestPluginPrivate::setWindowCoveringState(const ApiRequest &req, ApiRespon
     // Some devices invert LiftPct.
     if (hasLift)
     {
-        if (taskRef.lightNode->modelId().startsWith(QLatin1String("lumi.curtain"))||
-            (taskRef.lightNode->modelId() == QLatin1String("Motor Controller")))
+        if (taskRef.lightNode->modelId().startsWith(QLatin1String("lumi.curtain")) ||
+           (taskRef.lightNode->manufacturer() == QLatin1String("_TZ3000_egq7y6pr")) ||
+           (taskRef.lightNode->modelId() == QLatin1String("Motor Controller")))
         {
             targetLiftZigBee = 100 - targetLift;
         }
@@ -1740,7 +1741,7 @@ int DeRestPluginPrivate::setWindowCoveringState(const ApiRequest &req, ApiRespon
             // Legrand invert bri and don't support other value than 0
             bool bStatus = false;
             uint nHex = taskRef.lightNode->swBuildId().toUInt(&bStatus,16);
-            if (bStatus && (nHex < 33))
+            if (bStatus && (nHex < 28))
             {
                 targetLiftZigBee = targetLift == 0 ? 100 : 0;
             }

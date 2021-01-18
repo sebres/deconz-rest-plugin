@@ -2173,6 +2173,29 @@ int DeRestPluginPrivate::modifyConfig(const ApiRequest &req, ApiResponse &rsp)
         rspItem["success"] = rspItemState;
         rsp.list.append(rspItem);
     }
+    if (map.contains("lightlastseeninterval")) // optional
+    {
+        int lightLastSeen = map["lightlastseeninterval"].toInt(&ok);
+        if (!ok || lightLastSeen <= 0 || lightLastSeen > 65535)
+        {
+            rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/config/lightlastseeninterval"), QString("invalid value, %1, for parameter, lightlastseeninterval").arg(map["lightlastseeninterval"].toString())));
+            rsp.httpStatus = HttpStatusBadRequest;
+            return REQ_READY_SEND;
+        }
+
+        if (gwLightLastSeenInterval != lightLastSeen)
+        {
+            gwLightLastSeenInterval = lightLastSeen;
+            queSaveDb(DB_CONFIG, DB_SHORT_SAVE_DELAY);
+            changed = true;
+        }
+
+        QVariantMap rspItem;
+        QVariantMap rspItemState;
+        rspItemState["/config/lightlastseeninterval"] = lightLastSeen;
+        rspItem["success"] = rspItemState;
+        rsp.list.append(rspItem);
+    }
 
     if (changed)
     {
@@ -3675,9 +3698,12 @@ size_t DeRestPluginPrivate::calcDaylightOffsets(Sensor *daylightSensor, size_t i
         return iter;
     }
 
-    for (;iter < sensors.size(); iter++)
+    QElapsedTimer t; // don't block too long
+    t.start();
+    while (iter < sensors.size() && t.elapsed() < 3)
     {
         Sensor &s = sensors[iter];
+        iter++;
 
         if (s.type() != QLatin1String("CLIPDaylightOffset"))
         {
@@ -3705,11 +3731,16 @@ size_t DeRestPluginPrivate::calcDaylightOffsets(Sensor *daylightSensor, size_t i
         }
         else if (mode->toString() == QLatin1String("fix"))
         {
-            auto dt = QDateTime::fromString(localTime->toString(), QLatin1String("yyyy-MM-ddTHH:mm:ss"));
+            auto dt = QDateTime::fromMSecsSinceEpoch(localTime->toNumber());
+            const auto today = QDate::currentDate();
+            if (dt.date() != today)
+            {
+                dt.setDate(today);
+            }
             tref = dt.toMSecsSinceEpoch();
         }
 
-        if (tref != localTime->toNumber())
+        if (tref > 0 && tref != localTime->toNumber())
         {
             localTime->setValue(tref);
             s.updateStateTimestamp();
